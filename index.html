@@ -1,0 +1,24 @@
+<html>
+  <head>
+    <title></title>
+    <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+    <script src="https://raw.github.com/janl/mustache.js/master/mustache.js"></script>
+    <script type="text/javascript" src="facilitydb.js"></script>
+  </head>
+    <body>      
+      <div id="data"></div>
+      <form onsubmit="return false">
+	<p>Spreadsheet: http://spreadsheets.google.com/feeds/
+	  <select name="feed">
+	    <option>cells</option>
+	    <option>list</option>
+	  </select>/
+	  <input name="key" size="44" maxlength="70" value="0Ap1j--7QYzUydHFiblBxeEV2TEdoSTA5QzhXaU5oR1E" type="text">/
+	  <input name="worksheet" size="4" value="od6" type="text">/public/values&nbsp;
+	  <button id="ok_button" onclick="displayResults(this.form);">OK</button>
+	</p>
+      </form>
+
+      <div id="data"></div>
+    </body>
+</html>
