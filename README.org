@@ -1,17 +1,21 @@
 
 * facilitydb
 
-** Author: 
   Jerome Boulanger (jerome.boulanger@curie.fr) 
 
-** Description : 
-  Manage a list of instruments from several facilities 
-  by using Google Doc as a storage backend. There is one 
-  google doc by facility and one google listing the facilities.
-  The google docs has to be readable (share) and published to 
-  the web as rss (file>publish).
+** Description
+  Manage a list of instruments from several facilities by using Google
+  Doc as a storage backend. There is one spreadsheet by facility and
+  an extra one listing the facilities. These Google Docs have to be
+  readable (share/read-only) and published to the web as rss
+  (file>publish).
 
-** Files:
-*** facilitydb.js : process the information and generate a page
-*** facility.css : an example of formating
-*** index.html : an example of use
+  This project can serve as an example of use of the Google Docs as a
+  online basic database.
+
+** Files
+*** facilitydb.js 
+    Process the information and generate a page. Contains the code for
+    grabbing the feeds from the google docs.
+*** index.html
+    A simple example of use.

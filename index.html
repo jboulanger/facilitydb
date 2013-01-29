@@ -5,6 +5,7 @@
     <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.8/jquery.min.js"></script>
     <script src="https://raw.github.com/janl/mustache.js/master/mustache.js"></script>
     <script type="text/javascript" src="https://raw.github.com/jboulanger/facilitydb/master/facilitydb.js"></script>
+    <!--key of the spreadsheet-->
     <style type="text/css">
       div.instrument {margin-left:35%;width:30%;background-color:#EEEEEE;padding:10px;-moz-border-radius:15px;border-radius:12px;font-family:Arial}
       div.instrument-name {text-align:left;font-size:12px;color:#555555;font-weight:bold;margin-bottom:10px;margin-top:10px}
@@ -14,8 +15,8 @@
       div.instrument-link {text-align:justify;font-size:12px;font-family:Arial;font-weight:normal;margin-bottom:10px;margin-top:10px;width:90%;margin-left:5%}
       div.access-policy {text-align:justify;font-size:13px;font-family:Arial;font-weight:normal;margin-bottom:10px;margin-top:10px;width:90%;margin-left:5%}
     </style>
-    <!--key of the spreadsheet-->
-    <script> dbkey = "0Ap1j--7QYzUydGJiVWItYUJmblk4S25ic0wxNTVGWlE"</script>
+    <!--key of the spreadsheet can be directely inserted in this script or in separate file-->
+    <script type="text/javascript" src="spreadsheetkey.js"> </script>
     <!--mustache.js template-->
     <script id="instrument-template" type="text/template">
       {{#instruments}} 
