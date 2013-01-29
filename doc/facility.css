@@ -1,0 +1,5 @@
+div.instrument {margin-left:35%;width:30%;background-color:#EEEEEE;padding:10px;-moz-border-radius:15px;border-radius:12px;}
+div.instrument-name {text-align:left;font-size:12px;color:#555555;font-weight:bold;margin-bottom:10px;margin-top:10px}
+div.instrument-short-description {text-align:left;font-size:10px;font-weight:normal;margin-bottom:10px;margin-top:10px}
+div.instrument-long-description {float:left;text-align:justify;font-size:10px;font-weight:normal;margin-bottom:10px;margin-top:10px;width:70%}
+div.instrument-image {float:right;width:20%}
