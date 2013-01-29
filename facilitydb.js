@@ -1,159 +1,221 @@
+/**
+ * File facilitydb.js 
+ * Author: Jerome Boulanger (jerome.boulanger@curie.fr) 
+ * Description : Manage a list of instruments from several facilities 
+ *               by using Google Doc as a storage backend. There is one 
+ *               google doc by facility and one google listing the facilities.
+ *               The google docs has to be readable (share) and published to 
+ *               the web as rss (file>publish).
+ * 
+ * The html template has the following form:
+ * <html>
+ * <head>
+ *   <title></title>
+ *   <link rel="stylesheet" type="text/css" href="facility.css"/>
+ *   <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+ *   <script type="text/javascript" src="jquery-1.4.4.min.js"></script>
+ *   <script src="https://raw.github.com/janl/mustache.js/master/mustache.js"></script>
+ *   <script type="text/javascript" src="facilitydb.js"></script>
+ *   <script> dbkey = "{{insert your feed key here}}"</script>
+ *   <script id="instrument-template" type="text/template">{{Insert your mustache.js template here}} </script>
+ * </head>
+ *   <body>
+ *     <div id="facility_div"></div>
+ *     <div id="instrument_list"></div>
+ *   </body>
+ * </html>
+ */
 
+var facilities_table = new Array(); // facilities table
+var instruments_table = new Array(); // instruments table
+var modalities_table = new Array();  // modalities table
+
+function getSpreadsheetEntryColumnIndex(entry){
+    return entry.title.split('').filter(function(value){return isNaN(value);}).join();
+}
+
+function getSpreadsheetEntryRowIndex(entry){
+    return parseInt(entry.title.split('').filter(function(value){return !isNaN(value);}).join());
+}
+
+function getFeedFacilityKey(json){
+    return json.feed.link.split('/')[3].split('=')[1];
+}
+
+function getSpreadsheetEntryContent(json,row,col){
+    return json.feed.entries[col + json.feed.number_of_columns * row].content;
+}
+
+/**
+ * Read a google feed and compute row and columns number in the spreadsheet from the title
+ */
+function tagsAndSortEntries(json){
+    var number_of_columns = 0;
+    var number_of_rows = 0;
+    for (var i = 0; i < json.feed.entries.length; i++) {
+	var entry = json.feed.entries[i];
+	json.feed.entries[i].row = getSpreadsheetEntryRowIndex(entry)-1;
+	json.feed.entries[i].col = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".indexOf(getSpreadsheetEntryColumnIndex(entry));
+	if (json.feed.entries[i].col > number_of_columns) { number_of_columns = json.feed.entries[i].col; }
+	if (json.feed.entries[i].row > number_of_rows) { number_of_rows = json.feed.entries[i].row; }
+    }
+
+    json.feed.number_of_columns = number_of_columns+1;
+    json.feed.number_of_rows = number_of_rows+1;
+
+    for (var i = 0; i < json.feed.entries.length; i++) {
+	json.feed.entries[i].idx = json.feed.entries[i].col + json.feed.number_of_columns * json.feed.entries[i].row;
+    }	
+    json.feed.entries.sort(function(a,b){return a.idx - b.idx;});
+
+    console.log(number_of_columns + 'x' + number_of_rows)
+    return json;
+}
+
+/**
+ * Populate the modality table
+ */
+function populateModalitiesTable(){
+    var names = ["confocal","widefield"];
+    for (var i = 0; i < names.length; i++) {	    
+	modalities_table.push(new Object()); 
+	modalities_table[i].name = names[i];
+    }
+}
 
 /**
  * Convert a feed from google spreadsheet to list of instruments object
  */
-function jsonFeed2Instruments(json){
-    var instrument_array = new Array();
-    var instrument;
-    for (var i = 0; i < json.feed.entry.length; i++) {
-	var entry = json.feed.entry[i];
-	if (parseInt(entry.gs$cell.row)>1) {
-	    switch (parseInt(entry.gs$cell.col)){	    
-	    case 1: instrument = new Object(); instrument.name = entry.content.$t; break;
-	    case 2: instrument.short_description = entry.content.$t; break;
-	    case 3: instrument.long_description = entry.content.$t; break;
-	    case 4: instrument.link = entry.content.$t; break;
-	    case 5: instrument.image = entry.content.$t; instrument_array.push(instrument); break;
-	    }
-	}
+function populateInstrumentsTable(json){
+    json = tagsAndSortEntries(json);
+    var facility_key = getFeedFacilityKey(json);    
+    for (var row = 1; row < json.feed.number_of_rows; row++){
+	var instrument = new Object();
+	instrument.facility = facility_key;
+	instrument.name = getSpreadsheetEntryContent(json,row,0);
+	instrument.short_description = getSpreadsheetEntryContent(json,row,1);
+	instrument.long_description = getSpreadsheetEntryContent(json,row,2);
+	instrument.link = getSpreadsheetEntryContent(json,row,3);
+	instrument.image = getSpreadsheetEntryContent(json,row,4);
+	instrument.access_policy = getSpreadsheetEntryContent(json,row,5);
+	instrument.modalities = getSpreadsheetEntryContent(json,row,6);
+	instruments_table.push(instrument);
     }
-    var list = new Object();
-    list.instruments = instrument_array;
-    return list;
 }
 
+/**
+ * Convert a feed from google spreadsheet to list of facilitys object
+ */
+function populateFacilitiesTable(json){
+    json = tagsAndSortEntries(json);
+    for (var row = 1; row < json.feed.number_of_rows; row++){
+	var facility = new Object();
+	facility.name = getSpreadsheetEntryContent(json,row,0);
+	facility.key = getSpreadsheetEntryContent(json,row,1);	
+	facilities_table.push(facility);
+    }
+}
+
+function select_instruments(item){
+    var facility_form = document.getElementById('facility_form');    
+    var condFacility = true;
+    if (facility_form[0].selectedIndex > 0) {
+	condFacility =item.facility == facilities_table[facility_form[0].selectedIndex-1].key
+    }
+    
+    var condModality = true;
+    if (facility_form[1].selectedIndex > 0){
+	condModality = item.modalities.split(';').indexOf(facility_form[1][facility_form[1].selectedIndex].text) >= 0;
+    }
+
+    return condFacility && condModality;
+}
 
 /**
- * Lists the entries from the specified JSON feed
+ * Read the selected facilities and display the instruments
  */
-function cellEntries2(json) {
+function displayInstruments() {
     removeOldResults();
-    // convert the feed to an instrument list
-    var instruments = jsonFeed2Instruments(json);
-    // define formating moustache template (transformation)
-    var template = "<h1>Liste des instruments</h1>{{#instruments}}<h3>&nbsp;{{name}}:</h3> <strong>{{short_description}}</strong></br><table><tr><td><div style=\"text-align:justify\">{{long_description}}</div></br><a href=\"{{link}}\">>>Technical Sheet</a></td><td><img src=\"{{image}}\"></td></tr></table>{{/instruments}}";
-    // apply the transform and set the output in the data div
-    var div = document.getElementById('data');
-    div.innerHTML = Mustache.to_html(template, instruments);
-    // Re-enable the ok button.
-    var ok_button = document.getElementById('ok_button');
-    ok_button.removeAttribute('disabled');
+    var div = document.getElementById('instrument_list');
+    var p = document.createElement('p');
+    p.appendChild(document.createTextNode('Loading...'));
+    div.appendChild(p);
+
+    var instruments_selection = new Object();       		
+    instruments_selection.instruments = instruments_table.filter(select_instruments);	
+    
+    var template = "<div class='instrument'> <h3> The infrastructure has "+instruments_selection.instruments.length+" instruments:</h3>"
+    template += $('#instrument-template').html();
+    template += "</div>";
+    document.getElementById('instrument_list').innerHTML = Mustache.to_html(template, instruments_selection);  
 }
 
 /**
- * Called when the user clicks the 'OK' button to
- * retrieve a spreadsheet's JSON feed.  Creates a new 
- * script element in the DOM whose source is the JSON feed, 
- * and specifies that the callback function is 
- * 'listEntries' for a list feed and 'cellEntries' for a
- * cells feed (above).
+ * Callback for google.feed.load() in order to get instruments list
  */
-function displayResults(query) {
-  removeOldJSONScriptNodes();
-  removeOldResults();
-
-  // Show a "Loading..." indicator.
-  var div = document.getElementById('data');
-  var p = document.createElement('p');
-  p.appendChild(document.createTextNode('Loading...'));
-  div.appendChild(p);
-  
-  // Disable the OK button
-  var ok_button = document.getElementById('ok_button');
-  ok_button.disabled = 'true';
-
-  // Retrieve the JSON feed.
-  var script = document.createElement('script'); 
-
-  if (query.feed.options[query.feed.selectedIndex].text == 'cells') {
-    script.setAttribute('src', 'http://spreadsheets.google.com/feeds/'
-                         + query.feed.options[query.feed.selectedIndex].text 
-                         + '/' + query.key.value 
-                         + '/' + query.worksheet.value + '/public/values' +
-                        '?alt=json-in-script&callback=cellEntries2');
-  }
-  
-  script.setAttribute('id', 'jsonScript');
-  script.setAttribute('type', 'text/javascript');
-  document.documentElement.firstChild.appendChild(script);;
+function onLoadInstruments(result){
+    if (!result.error) {
+	populateInstrumentsTable(result);
+	displayInstruments();
+    } else {
+	console.log('Failed to load Instruments');
+    }
 }
 
-function displayResults(query) {
-  removeOldJSONScriptNodes();
-  removeOldResults();
-
-  // Show a "Loading..." indicator.
-  var div = document.getElementById('data');
-  var p = document.createElement('p');
-  p.appendChild(document.createTextNode('Loading...'));
-  div.appendChild(p);
-  
-  // Disable the OK button
-  var ok_button = document.getElementById('ok_button');
-  ok_button.disabled = 'true';
-
-  // Retrieve the JSON feed.
-  var script = document.createElement('script'); 
-
-  if (query.feed.options[query.feed.selectedIndex].text == 'cells') {
-    script.setAttribute('src', 'http://spreadsheets.google.com/feeds/'
-                         + query.feed.options[query.feed.selectedIndex].text 
-                         + '/' + query.key.value 
-                         + '/' + query.worksheet.value + '/public/values' +
-                        '?alt=json-in-script&callback=cellEntries2');
-  }
-  
-  script.setAttribute('id', 'jsonScript');
-  script.setAttribute('type', 'text/javascript');
-  document.documentElement.firstChild.appendChild(script);;
+/**
+ * Create the feed to get the insturment list
+ */
+function getInstruments(){    
+    for (var i = 0; i < facilities_table.length; i++){
+	var url = 'https://spreadsheets.google.com/feeds/cells/' + facilities_table[i].key + '/od6/public/values?alt=rss';
+	var feed = new google.feeds.Feed(url);
+	feed.includeHistoricalEntries();
+	feed.setNumEntries(200);
+	feed.load(onLoadInstruments);
+    }
 }
 
 
-
+/**
+ * Callback for google.feed.load() in order to get facilities list
+ * Convert the feed to a list of facilities and create a form for selecting facilites
+ */
 function onLoadFacility(result){
     if (!result.error) {
-	// Grab the container we will put the results into
-	var container = document.getElementById("data");
-	container.innerHTML = '';
-
-	// Loop through the feeds, putting the titles onto the page.
-	// Check out the result object for a list of properties returned in each entry.
-	// http://code.google.com/apis/ajaxfeeds/documentation/reference.html#JSON
-	for (var i = 0; i < result.feed.entries.length; i++) {
-	    var entry = result.feed.entries[i];
-	    var div = document.createElement("div");
-	    div.appendChild(document.createTextNode(entry.content.$t));
-	    container.appendChild(div);
-	}
+	populateFacilitiesTable(result);
+	getInstruments();
+	populateModalitiesTable();
+	// Built the form for selecting facilities
+	var template = "<form onsubmit='return false' id='facility_form'><select name='facility_name' onchange='displayInstruments();'><option>all</option>{{#facilities}}<option>{{name}}</option>{{/facilities}}</select><select name='modality_name' onchange='displayInstruments();'><option>all</option>{{#modalities}}<option>{{name}}</option>{{/modalities}}</select></form>"
+	var div = document.getElementById('facility_div');
+	var facilities = new Object();
+	facilities.facilities = facilities_table;
+	facilities.modalities = modalities_table;
+	div.innerHTML = Mustache.to_html(template, facilities);
     }
 }
 
-function getFacilities(){
-    var url='https://spreadsheets.google.com/feeds/cells/0Ap1j--7QYzUydGJiVWItYUJmblk4S25ic0wxNTVGWlE/od6/public/basic?alt=rss'
-    var feed = new google.feeds.Feed(url);
-    feed.load(onLoadFacility);
-}
-
 /**
- * Removes the script element from the previous result.
+ * On load Callback creating the page
  */
-function removeOldJSONScriptNodes() {
-  var jsonScript = document.getElementById('jsonScript');
-  if (jsonScript) {
-    jsonScript.parentNode.removeChild(jsonScript);
-  }
+function getFacilities(){
+    var maindb_url = 'https://spreadsheets.google.com/feeds/cells/'+dbkey+'/od6/public/values?alt=rss';
+    var feed = new google.feeds.Feed(maindb_url);
+    feed.includeHistoricalEntries();
+    feed.setNumEntries(200);
+    feed.load(onLoadFacility);
 }
 
 /**
  * Removes the output generated from the previous result.
  */
 function removeOldResults() {
-  var div = document.getElementById('data');
+  var div = document.getElementById('instrument_list');
   if (div.firstChild) {
     div.removeChild(div.firstChild);
   }
 }
 
+// Load the google feed library and set the callback
 google.load("feeds", "1");
 google.setOnLoadCallback(getFacilities);

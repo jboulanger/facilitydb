@@ -1,24 +1,35 @@
 <html>
   <head>
     <title></title>
+    <link rel="stylesheet" type="text/css" href="facility.css"/>
     <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+    <script type="text/javascript" src="jquery-1.4.4.min.js"></script>
     <script src="https://raw.github.com/janl/mustache.js/master/mustache.js"></script>
     <script type="text/javascript" src="facilitydb.js"></script>
+    <!--key of the spreadsheet-->
+    <script> dbkey = "0Ap1j--7QYzUydGJiVWItYUJmblk4S25ic0wxNTVGWlE"</script>
+    <!--mustache.js template-->
+    <script id="instrument-template" type="text/template">
+      {{#instruments}} 
+      <div class='instrument-short-description'>{{short_description}}</div> </br> 
+      <table>
+	<tr>
+	  <td>
+	    <div class='instrument-long-description'>{{long_description}}</div></br>
+	    <div class='access-policy'>Access policy:{{access_policy}}</div>
+	    <div class='instrument-link'><a href='{{link}}'>>>Technical Sheet</a></div>
+	  </td>
+	  <td>
+	    <div class='instrument-image'><img width=150px src='{{image}}'/></div>
+	    <div class='instrument-name'>{{name}}</div>
+	  </td>
+	</tr>
+      </table>
+      {{/instruments}}
+    </script>
   </head>
-    <body>      
-      <div id="data"></div>
-      <form onsubmit="return false">
-	<p>Spreadsheet: http://spreadsheets.google.com/feeds/
-	  <select name="feed">
-	    <option>cells</option>
-	    <option>list</option>
-	  </select>/
-	  <input name="key" size="44" maxlength="70" value="0Ap1j--7QYzUydHFiblBxeEV2TEdoSTA5QzhXaU5oR1E" type="text">/
-	  <input name="worksheet" size="4" value="od6" type="text">/public/values&nbsp;
-	  <button id="ok_button" onclick="displayResults(this.form);">OK</button>
-	</p>
-      </form>
-
-      <div id="data"></div>
+    <body>
+      <div id="facility_div"></div>
+      <div id="instrument_list"></div>
     </body>
 </html>
